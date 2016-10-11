@@ -25,6 +25,7 @@ setup(
     ],
     description='NFV-O packager utility',
     install_requires=[
+        'pyyaml',
         'ruamel.yaml',
         'six'
     ]
