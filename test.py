@@ -9,7 +9,7 @@ from aria.consumption import (
     Read, Validate, Model, Instance)
 from aria.loading import LiteralLocation
 
-from nfvo_packager.csar import CSAR
+from nfvo_packager.reader import CSARReader
 
 install_aria_extensions()
 
@@ -32,25 +32,18 @@ def parse_text(payload, search_paths=None):
 
 def main():
     '''Entry point'''
-    csar = CSAR('examples/csar_hello_world.zip')
-    # Validate the package format
-    csar.validate()
-    # Extract the package locally for debugging
-    csar.decompress()
-    # Dump information about the package
-    print 'Vars: %s' % vars(csar)
-    print 'Metadata: %s' % csar.get_metadata()
-    print 'Version: %s' % csar.get_version()
-    print 'Author: %s' % csar.get_author()
-    print 'Description: %s' % csar.get_description()
-    print 'Main template: %s' % csar.get_main_template()
-    print 'Main template YAML: %s' % csar.get_main_template_yaml()
-    print 'Temp dir: %s' % os.listdir(csar.temp_dir)
+    csar = CSARReader('examples/csar_hello_world.zip')
+    print 'Path: %s' % csar.path
+    print 'Author: %s' % csar.author
+    print 'Version: %s' % csar.version
+    print 'Metadata version: %s' % csar.metadata_version
+    print 'Entry definitions: %s' % csar.entry_definitions
+
     # Send the package to ARIA for parsing
-    # Including the /Definitions directory for searching
+    # Including the /definitions directory for searching
     aria_res = parse_text(
-        csar.get_main_template_yaml(),
-        [os.path.join(csar.temp_dir, 'Definitions')])
+        csar.entry_definitions_yaml,
+        [os.path.join(csar.path, 'definitions')])
     # Dump information about the final blueprint
     for _, node in aria_res.nodes.items():
         print 'Node: %s:' % node.id

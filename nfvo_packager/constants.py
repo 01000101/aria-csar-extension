@@ -12,19 +12,14 @@
 #    * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    * See the License for the specific language governing permissions and
 #    * limitations under the License.
-'''NFV-O packager utility config'''
+'''
+    nfvo_packager.constants
+    ~~~~~~~~~~~~~~~~~~~~~~~
+    CSAR constants
+'''
 
-from setuptools import setup
-
-setup(
-    name='nfvo-packager',
-    version='0.1',
-    license='LICENSE',
-    packages=[
-        'nfvo_packager'
-    ],
-    description='NFV-O packager utility',
-    install_requires=[
-        'pyyaml',
-    ]
-)
+META_FILE_VERSION_KEY = 'TOSCA-Meta-File-Version'
+META_CSAR_VERSION_KEY = 'CSAR-Version'
+META_CREATED_BY_KEY = 'Created-By'
+META_ENTRY_DEFINITIONS_KEY = 'Entry-Definitions'
+META_ENTRY_FILE = 'definitions/tosca_elk.yaml'
