@@ -36,7 +36,7 @@ def main():
     print 'Path: %s' % csar.path
     print 'Author: %s' % csar.author
     print 'Version: %s' % csar.version
-    print 'Metadata version: %s' % csar.metadata_version
+    print 'Metadata file version: %s' % csar.metadata_file_version
     print 'Entry definitions: %s' % csar.entry_definitions
 
     # Send the package to ARIA for parsing

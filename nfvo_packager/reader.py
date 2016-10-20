@@ -21,6 +21,7 @@
 import logging
 import os
 from shutil import rmtree
+from glob import glob
 from tempfile import mkstemp, mkdtemp
 from pprint import pformat
 import zipfile
@@ -69,6 +70,11 @@ class CSARReader(object):
             rmtree(self.csar['destination'])
 
     @property
+    def has_metadata_file(self):
+        '''Returns True if a metadata file exists'''
+        return os.path.isfile(os.path.join(self.path, constants.META_FILE))
+
+    @property
     def metadata(self):
         '''Returns CSAR metadata'''
         return self.csar.get('metadata', dict())
@@ -81,17 +87,24 @@ class CSARReader(object):
     @property
     def author(self):
         '''Returns the CSAR package author'''
-        return self.metadata.get(constants.META_CREATED_BY_KEY)
+        return self.metadata.get(constants.META_CREATED_BY_KEY) or \
+            self.metadata.get(constants.META_TMPL_AUTHOR_KEY)
 
     @property
     def version(self):
-        '''Returns the CSAR package version'''
-        return self.metadata.get(constants.META_CSAR_VERSION_KEY)
+        '''Returns the CSAR version'''
+        return self.metadata.get(constants.META_CSAR_VERSION_KEY) or \
+            self.metadata.get(constants.META_TMPL_VERSION_KEY)
 
     @property
-    def metadata_version(self):
-        '''Returns the CSAR metadata version'''
+    def metadata_file_version(self):
+        '''Returns the CSAR metadata file version'''
         return self.metadata.get(constants.META_FILE_VERSION_KEY)
+
+    @property
+    def template_name(self):
+        '''Returns the CSAR template name'''
+        return self.metadata.get(constants.META_TMPL_NAME_KEY)
 
     @property
     def entry_definitions(self):
@@ -159,23 +172,21 @@ class CSARReader(object):
         if not csar_root or not os.path.isdir(csar_root):
             raise RuntimeError('Missing CSAR contents')
         # Validate metadata
-        self._validate_metadata()
+        if self.has_metadata_file:
+            self._validate_metadata_file()
+        else:
+            self._validate_metadata_inline()
         # Validate entry definitions
         self._validate_entry_definitions()
 
-    def _validate_metadata(self):
+    def _validate_metadata_file(self):
         '''
-            Validates CSAR metadata
+            Validates CSAR metadata file
         '''
         # Check for metadata
-        csar_root = self.csar['destination']
-        csar_meta = os.path.join(csar_root, 'TOSCA-Metadata/')
-        csar_metafile = os.path.join(csar_meta, 'TOSCA.meta')
-        self.log.debug('CSAR metadata directory: %s' % csar_meta)
+        csar_metafile = os.path.join(self.path, constants.META_FILE)
         self.log.debug('CSAR metadata file: %s' % csar_metafile)
         # Check the expected files/folders exist
-        if not csar_meta or not os.path.isdir(csar_meta):
-            raise RuntimeError('Missing CSAR metadata directory')
         if not csar_metafile or not os.path.isfile(csar_metafile):
             raise RuntimeError('Missing CSAR metadata file')
         # Validate metadata YAML
@@ -208,11 +219,54 @@ class CSARReader(object):
         # Update the CSAR definition
         self.csar['metadata'] = metadata
 
+    def _validate_metadata_inline(self):
+        '''
+            Validates CSAR inline metadata
+        '''
+        # Get a list of all definition files in the root folder
+        root_defs = list()
+        self.log.debug('Searching for TOSCA template file with metadata')
+        for ext in ['yaml', 'yml']:
+            root_defs.extend(glob('%s/*.%s' % (self.path, ext)))
+        # Make sure there's only one
+        if len(root_defs) is not 1:
+            raise RuntimeError(
+                'Exactly 1 YAML file must exist in the CSAR root directory')
+        # Validate metadata YAML
+        def_data = dict()
+        self.log.debug('Attempting to parse CSAR metadata YAML')
+        with open(root_defs[0], 'r') as def_file:
+            def_data = yaml.load(def_file)
+        # Validate metadata specification
+        metadata = def_data.get('metadata')
+        if not metadata:
+            raise RuntimeError('Missing metadata section')
+        if constants.META_TMPL_VERSION_KEY not in metadata:
+            raise RuntimeError('Missing metadata "%s"' %
+                               constants.META_TMPL_VERSION_KEY)
+        if str(metadata[constants.META_TMPL_VERSION_KEY]) != '1.1':
+            raise RuntimeError('Metadata "%s" must be 1.1' %
+                               constants.META_TMPL_VERSION_KEY)
+        if constants.META_TMPL_AUTHOR_KEY not in metadata or \
+           not metadata[constants.META_TMPL_AUTHOR_KEY]:
+            raise RuntimeError('Missing metadata "%s"' %
+                               constants.META_TMPL_AUTHOR_KEY)
+        if constants.META_TMPL_NAME_KEY not in metadata or \
+           not metadata[constants.META_TMPL_NAME_KEY]:
+            raise RuntimeError('Missing metadata "%s"' %
+                               constants.META_TMPL_NAME_KEY)
+        # Update the CSAR definition
+        metadata[constants.META_ENTRY_DEFINITIONS_KEY] = root_defs[0]
+        self.csar['metadata'] = metadata
+
     def _validate_entry_definitions(self):
         '''
             Validates entry definitions
         '''
         self.log.debug('CSAR entry definitions: %s' % self.entry_definitions)
+        if not self.has_metadata_file:
+            self.log.debug('Using inline metadata; skipping...')
+            return
         if self.entry_definitions != constants.META_ENTRY_FILE:
             raise RuntimeError('"%s" must be "%s"' % (
                 constants.META_ENTRY_DEFINITIONS_KEY,

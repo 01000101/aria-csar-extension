@@ -18,8 +18,15 @@
     CSAR constants
 '''
 
+# Used for metadata file
+META_FILE = 'TOSCA-Metadata/TOSCA.meta'
 META_FILE_VERSION_KEY = 'TOSCA-Meta-File-Version'
 META_CSAR_VERSION_KEY = 'CSAR-Version'
 META_CREATED_BY_KEY = 'Created-By'
 META_ENTRY_DEFINITIONS_KEY = 'Entry-Definitions'
+# Used for inline metadata
+META_TMPL_NAME_KEY = 'template_name'
+META_TMPL_AUTHOR_KEY = 'template_author'
+META_TMPL_VERSION_KEY = 'template_version'
+# Definitions entry point
 META_ENTRY_FILE = 'definitions/tosca_elk.yaml'
