@@ -267,10 +267,6 @@ class CSARReader(object):
         if not self.has_metadata_file:
             self.log.debug('Using inline metadata; skipping...')
             return
-        if self.entry_definitions != constants.META_ENTRY_FILE:
-            raise RuntimeError('"%s" must be "%s"' % (
-                constants.META_ENTRY_DEFINITIONS_KEY,
-                constants.META_ENTRY_FILE))
         if not os.path.isfile(os.path.join(self.path,
                                            self.entry_definitions)):
             raise RuntimeError('"%s" points to "%s", but the file '
