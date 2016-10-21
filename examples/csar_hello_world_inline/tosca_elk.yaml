@@ -7,7 +7,7 @@ imports:
 
 metadata:
   template_name: Hello World Template
-  template_version: 1.1
+  template_version: '1.1'
   template_author: Gigaspaces
   # non-spec artifacts declarations
   artifacts:
