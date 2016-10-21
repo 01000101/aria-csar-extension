@@ -23,7 +23,7 @@ def parse_text(payload, search_paths=None):
     search_paths = search_paths or list()
     context = ConsumptionContext()
     context.presentation.location = LiteralLocation(payload)
-    context.loading.file_search_paths += search_paths
+    context.loading.prefixes += search_paths
     ConsumerChain(context, (Read, Validate, Model, Instance)).consume()
     if not context.validation.dump_issues():
         return context.modeling.instance

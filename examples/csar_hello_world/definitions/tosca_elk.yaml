@@ -3,7 +3,7 @@ tosca_definitions_version: tosca_simple_yaml_1_0
 description: Template for deploying a single server with predefined properties.
 
 imports:
-- tosca-simple-profile-1.0/tosca-simple-profile-1.0.yaml
+- tosca-simple-1.0/tosca-simple-1.0.yaml
 
 topology_template:
   node_templates:

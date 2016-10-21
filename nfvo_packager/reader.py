@@ -145,9 +145,9 @@ class CSARReader(object):
         req = requests.get(self.csar['source'], stream=True)
         for chunk in req.iter_content(chunk_size=1024):
             if chunk:
-                tmp_hndl.write(chunk)
+                os.write(tmp_hndl, chunk)
         self.log.debug('Remote CSAR downloaded; closing temporary file')
-        tmp_hndl.close()
+        os.close(tmp_hndl)
         # Update the CSAR definition
         self.csar['local'] = tmp_filename
 
