@@ -28,3 +28,5 @@ META_ENTRY_DEFINITIONS_KEY = 'Entry-Definitions'
 META_TMPL_NAME_KEY = 'template_name'
 META_TMPL_AUTHOR_KEY = 'template_author'
 META_TMPL_VERSION_KEY = 'template_version'
+# MIME types path
+META_MIMETYPES_GLOB = 'mimetypes/*.types'

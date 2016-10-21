@@ -7,7 +7,7 @@ Entry-Definitions: definitions/tosca_elk.yaml
 artifacts:
   # name/path of the artifact
   blobs/test.blob:
-    content-type: application/vnd.aria.blob
+    content-type: application/vnd.oasis.blob
     signature:
       # signature algorithm to use for the artifact's digest
       algorithm: md5

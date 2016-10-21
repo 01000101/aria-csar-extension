@@ -23,6 +23,7 @@ import os
 from shutil import rmtree
 from glob import glob
 from tempfile import mkstemp, mkdtemp
+import mimetypes
 import hashlib
 from base64 import b64decode
 from pprint import pformat
@@ -288,6 +289,10 @@ class CSARReader(object):
         '''
             Validates artifacts
         '''
+        self.log.debug('Searching for user-defined MIME types')
+        mtypes = glob(os.path.join(self.path, constants.META_MIMETYPES_GLOB))
+        self.log.debug('Loading %s user-defined MIME types', len(mtypes))
+        mimetypes.init(mtypes or None)
         self.log.debug('Checking for artifacts')
         if not self.artifacts:
             self.log.debug('No artifacts declared')
@@ -306,9 +311,32 @@ class CSARReader(object):
         if not os.path.isfile(path):
             raise RuntimeError('Artifact "%s" delcared, but file does '
                                'not exist' % name)
+        # Validate the content-type
         if 'content-type' not in artifact:
             raise RuntimeError('Artifact missing "content-type"')
         self.log.debug('Artifact content-type: %s', artifact['content-type'])
+        tstype = artifact['content-type'].split('/')
+        if len(tstype) < 2:
+            raise RuntimeError('Artifact content-type must comply with the '
+                               '"type/subtype" structure')
+        if not tstype[-1].startswith('vnd.'):
+            self.log.warn('Artifact content-type subtype should start '
+                          'with "vnd."')
+        # Validate content-type as a known MIME type
+        self.log.debug('Checking content-type against known MIME types')
+        if len([{x: y} for x, y in mimetypes.types_map.iteritems()
+                if y == artifact['content-type']]) < 1:
+            self.log.warn('Could not match artifact content-type '
+                          'with any known MIME type')
+        # Validate the artifact MIME type against the content-type
+        self.log.debug('Checking artifact MIME type against content-type')
+        mtype = mimetypes.guess_type(path)[0]
+        if mtype is None:
+            self.log.warn('Could not match artifact to a known MIME type')
+        if mtype != artifact['content-type']:
+            self.log.warn('Artifact content-type does not match the '
+                          'artifacts MIME type')
+        # Validate the signature / digest
         if 'signature' in artifact:
             sig = artifact['signature']
             algo = sig.get('algorithm')
