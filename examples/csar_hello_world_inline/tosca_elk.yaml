@@ -1,0 +1,42 @@
+tosca_definitions_version: tosca_simple_yaml_1_0
+
+description: Template for deploying a single server with predefined properties.
+
+imports:
+- tosca-simple-1.0/tosca-simple-1.0.yaml
+
+metadata:
+  template_name: Hello World Template
+  template_version: 1.1
+  template_author: Gigaspaces
+  # non-spec artifacts declarations
+  artifacts:
+    # name/path of the artifact
+    blobs/test.blob:
+      content-type: application/vnd.aria.blob
+      signature:
+        # signature algorithm to use for the artifact's digest
+        algorithm: md5
+        # base64-encoded digest of the artifact
+        digest: MWYxODBhOTkyODg0NjJhNmZmYjY0MjQ3NTZjMGM0MTIK
+
+
+topology_template:
+  node_templates:
+    my_server:
+      type: tosca.nodes.Compute
+      capabilities:
+        # Host container properties
+        host:
+         properties:
+           num_cpus: 2
+           disk_size: 10 GB
+           mem_size: 512 MB
+        # Guest Operating System properties
+        os:
+          properties:
+            # host Operating System image properties
+            architecture: x86_64
+            type: Linux
+            distribution: RHEL
+            version: 6.5

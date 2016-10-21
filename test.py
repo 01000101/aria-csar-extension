@@ -32,7 +32,7 @@ def parse_text(payload, search_paths=None):
 
 def main():
     '''Entry point'''
-    csar = CSARReader('examples/csar_hello_world.zip')
+    csar = CSARReader('examples/csar_hello_world_inline.zip')
     print 'Path: %s' % csar.path
     print 'Author: %s' % csar.author
     print 'Version: %s' % csar.version
