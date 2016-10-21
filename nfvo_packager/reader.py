@@ -23,6 +23,8 @@ import os
 from shutil import rmtree
 from glob import glob
 from tempfile import mkstemp, mkdtemp
+import hashlib
+from base64 import b64decode
 from pprint import pformat
 import zipfile
 import yaml
@@ -47,7 +49,8 @@ class CSARReader(object):
             'external': is_external,
             'local': None,
             'destination': None,
-            'metadata': None
+            'metadata': None,
+            'artifacts': None
         }
         self._retrieve()
         self._extract()
@@ -78,6 +81,11 @@ class CSARReader(object):
     def metadata(self):
         '''Returns CSAR metadata'''
         return self.csar.get('metadata', dict())
+
+    @property
+    def artifacts(self):
+        '''Returns CSAR artifacts'''
+        return self.metadata.get('artifacts', dict())
 
     @property
     def path(self):
@@ -178,6 +186,8 @@ class CSARReader(object):
             self._validate_metadata_inline()
         # Validate entry definitions
         self._validate_entry_definitions()
+        # Validate artifacts
+        self._validate_artifacts()
 
     def _validate_metadata_file(self):
         '''
@@ -185,7 +195,7 @@ class CSARReader(object):
         '''
         # Check for metadata
         csar_metafile = os.path.join(self.path, constants.META_FILE)
-        self.log.debug('CSAR metadata file: %s' % csar_metafile)
+        self.log.debug('CSAR metadata file: %s', csar_metafile)
         # Check the expected files/folders exist
         if not csar_metafile or not os.path.isfile(csar_metafile):
             raise RuntimeError('Missing CSAR metadata file')
@@ -194,7 +204,7 @@ class CSARReader(object):
         self.log.debug('Attempting to parse CSAR metadata YAML')
         with open(csar_metafile, 'r') as mfile:
             metadata = yaml.load(mfile)
-        self.log.debug('CSAR metadata:\n%s' % pformat(metadata))
+        self.log.debug('CSAR metadata:\n%s', pformat(metadata))
         # Validate metadata specification
         if constants.META_FILE_VERSION_KEY not in metadata:
             raise RuntimeError('Missing metadata "%s"' %
@@ -263,7 +273,7 @@ class CSARReader(object):
         '''
             Validates entry definitions
         '''
-        self.log.debug('CSAR entry definitions: %s' % self.entry_definitions)
+        self.log.debug('CSAR entry definitions: %s', self.entry_definitions)
         if not self.has_metadata_file:
             self.log.debug('Using inline metadata; skipping...')
             return
@@ -273,3 +283,47 @@ class CSARReader(object):
                                'does not exist' % (
                                    constants.META_ENTRY_DEFINITIONS_KEY,
                                    self.entry_definitions))
+
+    def _validate_artifacts(self):
+        '''
+            Validates artifacts
+        '''
+        self.log.debug('Checking for artifacts')
+        if not self.artifacts:
+            self.log.debug('No artifacts declared')
+            return
+        # Iterate through each artifacts
+        for name, artifact in self.artifacts.iteritems():
+            self._validate_artifact(name, artifact)
+
+    def _validate_artifact(self, name, artifact):
+        '''
+            Validates a single artifact
+        '''
+        self.log.debug('Validating artifact: %s', name)
+        self.log.debug('Checking if artifact file exists')
+        path = os.path.join(self.path, name)
+        if not os.path.isfile(path):
+            raise RuntimeError('Artifact "%s" delcared, but file does '
+                               'not exist' % name)
+        if 'signature' in artifact:
+            sig = artifact['signature']
+            algo = sig.get('algorithm')
+            digest = sig.get('digest')
+            if not algo:
+                raise RuntimeError(
+                    'Artifact signature delcared, but no algorithm was found')
+            if not digest:
+                raise RuntimeError(
+                    'Artifact signature delcared, but no digest was found')
+            # Decode base64 encoded digest
+            self.log.debug('Decoding base64-encoded artifact digest')
+            digest = b64decode(digest).strip()
+            self.log.debug('Decoded artifact digest: %s', digest)
+            # Calculate hash of the actual artifact
+            self.log.debug('Calculating %s digest of artifact %s', algo, name)
+            adigest = hashlib.new(algo, open(path, 'rb').read()).hexdigest()
+            self.log.debug('Calculated artifact digest: %s', adigest)
+            # Compare digests
+            if digest != adigest:
+                raise RuntimeError('Artifact digest mismatch')

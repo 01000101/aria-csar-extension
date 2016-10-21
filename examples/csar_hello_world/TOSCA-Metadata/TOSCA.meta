@@ -2,3 +2,14 @@ TOSCA-Meta-File-Version: 1.0
 CSAR-Version: 1.1
 Created-By: Gigaspaces
 Entry-Definitions: definitions/tosca_elk.yaml
+
+# non-spec artifacts declarations
+artifacts:
+  # name/path of the artifact
+  blobs/test.blob:
+    content-type: application/vnd.aria.blob
+    signature:
+      # signature algorithm to use for the artifact's digest
+      algorithm: md5
+      # base64-encoded digest of the artifact
+      digest: MWYxODBhOTkyODg0NjJhNmZmYjY0MjQ3NTZjMGM0MTIK
