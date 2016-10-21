@@ -306,6 +306,9 @@ class CSARReader(object):
         if not os.path.isfile(path):
             raise RuntimeError('Artifact "%s" delcared, but file does '
                                'not exist' % name)
+        if 'content-type' not in artifact:
+            raise RuntimeError('Artifact missing "content-type"')
+        self.log.debug('Artifact content-type: %s', artifact['content-type'])
         if 'signature' in artifact:
             sig = artifact['signature']
             algo = sig.get('algorithm')
