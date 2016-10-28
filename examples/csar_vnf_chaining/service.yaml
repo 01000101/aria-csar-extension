@@ -1,0 +1,240 @@
+tosca_definitions_version: tosca_simple_profile_for_nfv_1_0
+description: Two virtual routers with on VDU each
+metadata:
+  ID: vRouter-exmaple
+  vendor:  Gigaspaces
+  version: 1.0
+
+node_types:
+  vRouterVNF:
+    derived_from: tosca.nodes.nfv.VNF
+    capabilities:
+      forwarder:
+        type: tosca.capabilities.nfv.Forwarder
+
+
+topology_template:
+  node_templates:
+    VNF1:
+      type: vRouterVNF
+      properties:
+        id: gigaspaces_vnf1
+        vendor: Gigaspaces
+        version: "1.0"
+      requirements:
+        - virtual_link: internal_lan
+
+    VNF2:
+      type: vRouterVNF
+      properties:
+        id: gigaspaces_vnf2
+        vendor: Gigaspaces
+        version: "1.0"
+      requirements:
+        - virtual_link: internal_lan
+
+    VDU1:
+      type: tosca.nodes.nfv.VDU
+      capabilities:
+        nfv_compute:
+          properties:
+            num_cpus: 2
+            mem_size: 2048 MB
+            disk_size: 8 GB
+            mem_page_size: large
+      artifacts:
+        vRouterImage:
+          type: tosca.artifacts.Deployment.Image.VM
+          file: images/vdu1.image
+      interfaces:
+         Standard:
+           configure:
+             implementation: scripts/vdu1_configure.sh
+
+    VDU2:
+      type: tosca.nodes.nfv.VDU
+      capabilities:
+        nfv_compute:
+          properties:
+            num_cpus: 4
+            mem_size: 4096 MB
+            disk_size: 4 GB
+            mem_page_size: large
+      artifacts:
+        vRouterImage:
+          type: tosca.artifacts.Deployment.Image.VM
+          file: images/vdu2.image
+      interfaces:
+         Standard:
+           configure:
+             implementation: scripts/vdu2_configure.sh
+
+    CP01:
+      type: tosca.nodes.nfv.CP
+      properties:
+        type: vPort
+        anti_spoof_protection: false
+      requirements:
+        - virtual_link: ingress_eline
+        - virtual_binding: VDU1
+        - link: ingress_eline_net
+        - binding: compute_node_1
+
+    CP02:
+      type: tosca.nodes.nfv.CP
+      properties:
+        type: vPort
+        anti_spoof_protection: false
+      requirements:
+        - virtual_link: egress_eline
+        - virtual_binding: VDU2
+        - link: egress_eline_net
+        - binding: compute_node_2
+
+    CP11:
+      type: tosca.nodes.nfv.CP
+      properties:
+        type: vPort
+        anti_spoof_protection: false
+      requirements:
+        - virtual_link: internal_lan
+        - virtual_binding: VDU1
+        - link: internal_lan_net
+        - binding: compute_node_1
+
+    CP12:
+      type: tosca.nodes.nfv.CP
+      properties:
+        type: vPort
+        anti_spoof_protection: false
+      requirements:
+        - virtual_link: internal_lan
+        - virtual_binding: VDU1
+        - link: internal_lan_net
+        - binding: compute_node_1
+
+    CP21:
+      type: tosca.nodes.nfv.CP
+      properties:
+        type: vPort
+        anti_spoof_protection: false
+      requirements:
+        - virtual_link: internal_lan
+        - virtual_binding: VDU2
+        - link: internal_lan_net
+        - binding: compute_node_2
+
+    CP22:
+      type: tosca.nodes.nfv.CP
+      properties:
+        type: vPort
+        anti_spoof_protection: false
+      requirements:
+        - virtual_link: internal_lan
+        - virtual_binding: VDU2
+        - link: internal_lan_net
+        - binding: compute_node_2
+
+    forwarding_path:
+      type: tosca.nodes.nfv.FP
+      requirements:
+        - forwarder: VNF1
+
+    internal_lan:
+      type: tosca.nodes.nfv.VL.ELAN
+      properties:
+        cidr: 10.1.10.0/24
+        gateway_ip: 10.1.10.1
+        network_type: vlan
+        physical_network: phynet1
+        segmentation_id: "1000"
+
+    internal_lan_net:
+      type: tosca.nodes.network.Network
+
+    ingress_eline:
+      type: tosca.nodes.nfv.VL.ELine
+      properties:
+        cidr: 10.2.10.0/24
+        gateway_ip: 10.2.10.1
+        network_type: vlan
+        physical_network: phynet2
+        segmentation_id: "1001"
+        vendor: Gigaspaces
+
+    ingress_eline_net:
+      type: tosca.nodes.network.Network
+
+    egress_eline:
+      type: tosca.nodes.nfv.VL.ELine
+      properties:
+        cidr: 10.3.10.0/24
+        gateway_ip: 10.3.10.1
+        network_type: vlan
+        physical_network: phynet3
+        segmentation_id: "1002"
+        vendor: Gigaspaces
+
+    egress_eline_net:
+      type: tosca.nodes.network.Network
+
+    copute_node_storage:
+      type: tosca.nodes.BlockStorage
+      properties:
+        size: 10 GB
+
+    compute_node_1:
+      type: tosca.nodes.Compute
+      capabilities:
+        host:
+         properties:
+           num_cpus: 2
+           disk_size: 10 GB
+           mem_size: 512 MB
+        os:
+          properties:
+            architecture: x86_64
+            type: Linux
+            distribution: RHEL
+            version: 6.5
+
+    compute_node_2:
+      type: tosca.nodes.Compute
+      capabilities:
+        host:
+         properties:
+           num_cpus: 2
+           disk_size: 10 GB
+           mem_size: 512 MB
+        os:
+          properties:
+            # host Operating System image properties
+            architecture: x86_64
+            type: Linux
+            distribution: RHEL
+            version: 6.5
+
+  groups:
+    VNFFG:
+      type: tosca.groups.nfv.VNFFG
+      properties:
+        vendor: Gigaspaces
+        version: "1.0"
+        number_of_endpoints: 6
+        dependent_virtual_link:
+          - ingress_eline
+          - internal_lan
+          - egress_eline
+        constituent_vnfs:
+          - VNF1
+          - VNF2
+        connection_point:
+          - CP01
+          - CP11
+          - CP12
+          - CP21
+          - CP22
+          - CP02
+
+
+
