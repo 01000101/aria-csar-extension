@@ -9,7 +9,7 @@ from aria.consumption import (
     Read, Validate, Model, Instance)
 from aria.loading import LiteralLocation
 
-from nfvo_packager.reader import CSARReader
+from nfvo_packager.writer import CSARWriter
 
 install_aria_extensions()
 
@@ -32,7 +32,11 @@ def parse_text(payload, search_paths=None):
 
 def main():
     '''Entry point'''
-    csar = CSARReader('examples/csar_hello_world.zip')
+    build = CSARWriter('examples/csar_hello_world_nometa',
+                       entry='definitions/tosca_elk.yaml',
+                       author='Gigaspaces',
+                       output='examples/csar_hello_world_nometa.zip')
+    csar = build.reader
     print 'Path: %s' % csar.path
     print 'Author: %s' % csar.author
     print 'Version: %s' % csar.version
