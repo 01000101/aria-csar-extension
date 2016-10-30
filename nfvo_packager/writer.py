@@ -25,6 +25,8 @@ from tempfile import mkstemp, mkdtemp
 from pprint import pformat
 import zipfile
 import yaml
+import hashlib
+import hmac
 
 from nfvo_packager import constants
 from nfvo_packager.reader import CSARReader
@@ -67,8 +69,8 @@ class CSARWriter(object):
         # ZIPs the contents if a directory was provided
         # copies ZIP file if a non-CSAR ZIP file was provided
         self._zip()
-        # Build metadata file
-        self.build_metadata()
+        # Create metadata file
+        self.create_metadata()
         # Move the archive to the user-specified destination
         self.log.debug('Copying CSAR to destination path: %s'
                        % self.archive)
@@ -151,9 +153,9 @@ class CSARWriter(object):
         if not os.path.exists(self.csar['source']):
             raise RuntimeError('CSAR source path does not exist')
         
-    def build_metadata(self):
+    def create_metadata(self):
         '''
-            Builds a new TOSCA CSAR metadata file
+            Creates a new TOSCA CSAR metadata file
         '''
         self.log.debug('Opening archive for updating')
         ziph = zipfile.ZipFile(self.csar['local'], 'a', zipfile.ZIP_DEFLATED)
@@ -163,4 +165,43 @@ class CSARWriter(object):
                       yaml.dump(self.metadata, default_flow_style=False))
         ziph.close()
         
-        
+    def create_signature(self, keydata, outfile=None):
+        '''
+            Creates a signature for the CSAR package
+            
+        :warning: Overwrites existing signature file if `outfile` is set
+            
+        :param str keydata: Key signing data
+        :param str outfile: If set, writes the signature to an output file at
+                            this path.
+        :rtype: str
+        :returns: Signature string
+        '''
+        sig_builder = hmac.new(keydata, digestmod=hashlib.sha384)
+        # Open the CSAR for reading
+        if not self.csar['destination']:
+            raise RuntimeError(
+                'Cannot calculate signature before CSAR package exists')
+        fcsar = open(self.csar['destination'], 'rb')
+        # Read in chunks and prepare for signature calculation
+        self.log.debug('Using CSAR package at "%s"',self.csar['destination'])
+        self.log.debug('Preparing to calculate CSAR signature')
+        try:
+            while True:
+                block = fcsar.read(4096)
+                if not block:
+                    break
+                sig_builder.update(block)
+        finally:
+            fcsar.close()
+        # Get the actual signature
+        self.log.debug('Calculating CSAR signature')
+        digest = sig_builder.hexdigest()
+        self.log.debug('Calculated CSAR signature as "%s"', digest)
+        # Write signature to file if needed
+        if outfile:
+            self.log.debug('Writing signature to file "%s"', outfile)
+            with open(outfile, 'w') as fsig:
+                fsig.write(digest)
+        # Return the signature
+        return digest
