@@ -38,10 +38,10 @@ class CSARWriter(object):
     '''
         TOSCA Cloud Service Archive (CSAR) writer. This class
         is a helper for building CSAR v1.1 ZIP packages.
-        
+
     :param str source: Path to the root directory to use
     :param str entry: Relative (from root directory) path to the definitions
-                      entry file. 
+                      entry file.
     '''
     def __init__(self, source, entry='tosca_elk.yaml',
                  author='TOSCA', output='./build.csar.zip',
@@ -77,12 +77,12 @@ class CSARWriter(object):
         shutil.copy(self.csar['local'], self.archive)
         # Validate non-CSAR data
         self.reader = CSARReader(self.archive)
-        
+
     @property
     def archive(self):
         '''Returns the (compressed) CSAR path'''
         return self.csar.get('destination')
-    
+
     @property
     def metadata(self):
         '''Returns CSAR metadata'''
@@ -92,7 +92,7 @@ class CSARWriter(object):
     def artifacts(self):
         '''Returns CSAR artifacts'''
         return self.metadata.get('artifacts', dict())
-    
+
     @property
     def author(self):
         '''Returns the CSAR package author'''
@@ -109,12 +109,12 @@ class CSARWriter(object):
     def metadata_file_version(self):
         '''Returns the CSAR metadata file version'''
         return self.metadata.get(constants.META_FILE_VERSION_KEY)
-    
+
     @property
     def entry_definitions(self):
         '''Returns the Entry-Definitions (relative) path'''
         return self.metadata.get(constants.META_ENTRY_DEFINITIONS_KEY)
-        
+
     def _zip(self):
         '''
             Creates, or copies, a ZIP file of the non-CSAR data
@@ -135,7 +135,7 @@ class CSARWriter(object):
             ziph = zipfile.ZipFile(tmp_filename, 'w', zipfile.ZIP_DEFLATED)
             for _root, _dirs, files in os.walk(self.csar['source']):
                 for _file in files:
-                    self.log.debug('Writing to archive: %s', 
+                    self.log.debug('Writing to archive: %s',
                                    os.path.relpath(os.path.join(_root, _file),
                                                    self.csar['source']))
                     ziph.write(os.path.join(_root, _file),
@@ -144,7 +144,7 @@ class CSARWriter(object):
             ziph.close()
         # Update the CSAR definition
         self.csar['local'] = tmp_filename
-        
+
     def _validate_pre(self):
         '''
             Validates a proposed CSAR package (before ZIP)
@@ -152,7 +152,7 @@ class CSARWriter(object):
         # Check the provided path
         if not os.path.exists(self.csar['source']):
             raise RuntimeError('CSAR source path does not exist')
-        
+
     def create_metadata(self):
         '''
             Creates a new TOSCA CSAR metadata file
@@ -164,16 +164,14 @@ class CSARWriter(object):
         ziph.writestr(constants.META_FILE,
                       yaml.dump(self.metadata, default_flow_style=False))
         ziph.close()
-        
+
     def create_signature(self, keydata, outfile=None):
         '''
             Creates a signature for the CSAR package
-            
-        :warning: Overwrites existing signature file if `outfile` is set
-            
+
         :param str keydata: Key signing data
         :param str outfile: If set, writes the signature to an output file at
-                            this path.
+            this path.
         :rtype: str
         :returns: Signature string
         '''
@@ -205,3 +203,37 @@ class CSARWriter(object):
                 fsig.write(digest)
         # Return the signature
         return digest
+
+    def verify_signature(self, keydata, digest=None, sigfile=None):
+        '''
+            Verifies a signature for the CSAR package
+
+        :note: This method request `digest` OR `sigfile` to be specified.
+            If both are specified, `digest` takes precedence.
+
+        :param str keydata: Key signing data
+        :param str digest: Signature string
+        :param str sigfile: Path to a signature file
+        :rtype: boolean
+        :returns: True if signature is verified, False if not
+        '''
+        # Sanity checks
+        if not digest and not sigfile:
+            raise RuntimeError('"digest" or "sigfile" must be set')
+        # Get signature from file if not from string
+        if digest:
+            self.log.debug('Using signature from string')
+        elif sigfile:
+            self.log.debug('Using signature from file "%s"', sigfile)
+            with open(sigfile, 'r') as sfile:
+                digest = sfile.read()
+        # Signature normalization
+        if not isinstance(digest, basestring):
+            raise RuntimeError('Existing signature must be a string type')
+        digest = digest.strip()
+        # Calculate fresh signature
+        real_digest = self.create_signature(keydata)
+        # Verify signatures
+        return hmac.compare_digest(digest, real_digest)
+
+
